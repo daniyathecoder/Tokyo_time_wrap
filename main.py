@@ -2,50 +2,28 @@ import pygame
 import sys
 from settings import *
 from player import Player
-from maps import LEVEL_1_MAP
-
-class Tile(pygame.sprite.Sprite):
-   def __init__(self,x,y):
-      super().__init__()
-      self.image = pygame.Surface((TILE_SIZE,TILE_SIZE))
-      self.image.fill(GROUND_BROWN)
-      self.rect = self.image.get_rect()
-      self.rect.x = x
-      self.rect.y = y
+from level import Level
+from camera import Camera
 
 class Game:
-    def __init__(self):
+ def __init__(self):
 
       pygame.init()
       self.screen=pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT))
-      pygame.display.set_caption("Tokyo Time Wrap - PHASE 2 PHYSICS")
+      pygame.display.set_caption("Tokyo Time Wrap - PHASE 3")
       self.clock=pygame.time.Clock()
-      self.is_running =True
-
-      #CREATING A SPRITE UPDATE TO EASILY DRAW UPODATES
-      
-      self.platforms = pygame.sprite.Group()
+      self.running =True
+      self.current_era = 1
+      self.level=Level(self.current_era)
+      self.player=Player(100,100)
+      self.camera= Camera()
+      self.camera.set_world_width(self.level.width)
       self.all_sprites=pygame.sprite.Group()
-      self.build_level()
+      self.all_sprites.add(self.player)
 
-    def build_level(self):
-       #SCAN THROUGH THE MATRIUX IN MAPS.PY 
-       for row_index,row in enumerate(LEVEL_1_MAP):
-          for col_index,char in enumerate(row):
-             x= col_index* TILE_SIZE
-             y= row_index* TILE_SIZE
 
-             #CREATE A SOLID PLATFORM
-             if char in ['X','5']:
-                tile = Tile(x,y)
-                self.platforms.add(tile)
-                self.all_sprites.add(tile)
-       #put nobita near the left edge of the screen,just above the floor
-       self.player =Player(100,100)
-       self.all_sprites.add(self.player)
-
-    def run(self):
-       while self.is_running:
+ def run(self):
+       while self.running:
           self.handle_events()
           self.update()
           self.draw()
@@ -53,30 +31,61 @@ class Game:
        pygame.quit()
        sys.exit()
 
-    def handle_events(self):
+ def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.is_running = False
+                self.running = False
+                return
+            elif event.type == pygame.KEYDOWN:
+               if event.key in (pygame.K_SPACE,pygame.K_w,pygame.K_UP): 
+                  self.player.jump()  
 
-    def update(self):
+ def update(self):
        #UPDATing the player entity and tel it where the floors are
-       self.player.update(self.platforms)
-       if self.player.rect.top > SCREEN_HEIGHT :
+       self.player.update(self.level.platforms)
+       self.camera.update(self.player)
+       if self.level.exit_desk is not None:
+          if pygame.sprite.collide_rect(self.player,self.level.exit_desk):
+             self.next_era()
+       if self.player.rect.top > (self.level.height+200) :
           self.reset_player()
 
-    def reset_player(self):
+ def next_era(self):
+    #already at final era
+    if self.current_era >= 3:
+       return
+    #move to next era
+    self.current_era +=1
+    #build new level
+    self.level.change_era(self.current_era)
+    self.reset_player()
+    self.camera.set_world_width(self.level.width)
+    self.camera.x = 0
+
+
+ def reset_player(self):
        self.player.position.x =100
        self.player.position.y =100
        self.player.velocity.x = 0
        self.player.velocity.y =0
        self.player.rect.topleft =(100,100)  
+       self.player.on_ground = False
+       self.camera.x =0
 
-    def draw(self):
-       self.screen.fill(SKY_BLUE)
+ def draw_background(self):
+     if self.current_era == 1:
+         self.screen.fill(FEUDAL_SKY)
+     elif self.current_era ==2:
+         self.screen.fill(MODERN_SKY)
+     elif self.current_era==3:
+         self.screen.fill(FUTURE_SKY)
 
-       #drawing everything inside the sprite group onto the game window
-       self.all_sprites.draw(self.screen)
-
+ def draw(self):
+       self.draw_background()
+       self.level.draw(self.screen,self.camera)
+       player_screen_rect = (self.camera.apply(self.player.rect))
+       self.screen.blit(self.player.image,player_screen_rect)
+       # update display
        pygame.display.flip()
 if __name__ == "__main__":
    game = Game()

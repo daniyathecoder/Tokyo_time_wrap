@@ -13,8 +13,8 @@ class ExitDesk(pygame.sprite.Sprite):
     def __init__(self,x,y):
         super().__init__()
         self.image =pygame.Surface((TILE_SIZE,TILE_SIZE))
-        self.fill(EXIT_COLOR)
-        self.rect = self.image.get_rec(topleft = (x,y))
+        self.image.fill(EXIT_COLOR)
+        self.rect = self.image.get_rect(topleft = (x,y))
 
 class Level:
     def __init__(self,era):
